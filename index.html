@@ -2,7 +2,8 @@
 <!--
   ============================================================
   SQL Notepad @Yosri
-  Copyright (c) 2026 Hazem. All rights reserved.
+  Copyright (c) 2026 Mohamed Yosre Ismael. All rights reserved.
+  Contact: yosrii@gmail.com
 
   This software and its design are the property of the author.
   Unauthorized copying, redistribution, resale, or claiming of
@@ -14,7 +15,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="author" content="Hazem">
+<meta name="author" content="Mohamed Yosre Ismael">
 <meta name="description" content="SQL Notepad @Yosri — a fast, clean, in-browser SQL editor and multi-language code/notes workspace.">
 <title>SQL Notepad @Yosri</title>
 
@@ -406,6 +407,132 @@
     text-overflow:ellipsis;
   }
 
+  /* ===== Floating calculator ===== */
+  .calc{
+    position:fixed;
+    top:120px;
+    right:24px;
+    width:240px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 12px 36px rgba(0,0,0,.45);
+    z-index:80;
+    overflow:hidden;
+    user-select:none;
+  }
+  .calc-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 12px;
+    background:var(--bg-elevated);
+    border-bottom:1px solid var(--border);
+    font-size:12px;
+    font-weight:600;
+    color:var(--text-dim);
+    cursor:move;
+  }
+  .calc-close{
+    background:none;border:none;color:var(--text-dim);
+    font-size:18px;line-height:1;cursor:pointer;padding:0 4px;
+  }
+  .calc-close:hover{color:var(--danger);}
+  .calc-display{
+    width:100%;
+    border:none;
+    background:var(--bg-deep);
+    color:var(--text);
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:22px;
+    text-align:right;
+    padding:14px 14px;
+    outline:none;
+  }
+  .calc-keys{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--border);
+  }
+  .calc-key{
+    border:none;
+    background:var(--bg-panel);
+    color:var(--text);
+    font-size:16px;
+    padding:14px 0;
+    cursor:pointer;
+    transition:background .1s;
+  }
+  .calc-key:hover{background:var(--hover-bg);}
+  .calc-key:active{background:var(--accent-soft, var(--hover-bg));}
+  .calc-key.op{color:var(--accent-2);font-weight:600;}
+  .calc-key.fn{color:var(--text-dim);font-size:14px;}
+  .calc-key.eq{
+    grid-column:span 2;
+    background:var(--accent-2);
+    color:#0b0d12;
+    font-weight:700;
+  }
+  .calc-key.eq:hover{filter:brightness(1.1);}
+
+  /* ===== About modal ===== */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .modal{
+    position:relative;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+    max-width:460px;
+    width:100%;
+    max-height:85vh;
+    overflow-y:auto;
+    padding:28px 28px 22px;
+  }
+  .modal-close{
+    position:absolute;top:14px;right:16px;
+    background:none;border:none;color:var(--text-dim);
+    font-size:22px;line-height:1;cursor:pointer;
+  }
+  .modal-close:hover{color:var(--danger);}
+  .modal h2{
+    margin:0 0 6px;
+    font-size:1.5rem;
+    color:var(--text);
+  }
+  .accent-text{color:var(--accent-2);}
+  .about-tag{
+    margin:0 0 18px;
+    color:var(--text-dim);
+    font-size:.95rem;
+  }
+  .about-body{font-size:.92rem;line-height:1.7;color:var(--text);}
+  .about-body p{margin:0 0 12px;}
+  .about-body ul{margin:0 0 12px;padding-inline-start:20px;}
+  .about-body li{margin-bottom:5px;color:var(--text-dim);}
+  .about-foot{
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .about-email{color:var(--accent-2);user-select:all;}
+
   input[type=file]{display:none;}
 </style>
 </head>
@@ -443,6 +570,9 @@
         <button data-bg="bg-gray">Light Gray</button>
       </div>
     </div>
+
+    <button class="btn" id="calcToggle" title="Show/hide calculator">🧮 Calculator</button>
+    <button class="btn" id="aboutBtn" title="About this app">About</button>
 
     <span class="spacer"></span>
     <span class="hint" id="fsHint"></span>
@@ -489,11 +619,70 @@
 
   <div class="statusbar">
     <span id="posInfo">Line 1, Col 1</span>
-    <span class="copyright">© 2026 Hazem · SQL Notepad @Yosri</span>
+    <span class="copyright">© 2026 Mohamed Yosre Ismael · yosrii@gmail.com</span>
     <span id="modeInfo">SQL</span>
   </div>
 
   <input type="file" id="fileInput" accept=".sql,.txt,.md,.js,.py,.json,.html,.css,.xml,.yaml,.yml,.java,.c,.cpp,.cs,.php,.sh,text/plain">
+
+  <!-- ===== Floating calculator ===== -->
+  <div class="calc" id="calc" hidden>
+    <div class="calc-head" id="calcHead">
+      <span>Calculator</span>
+      <button class="calc-close" id="calcClose" title="Hide">×</button>
+    </div>
+    <input type="text" class="calc-display" id="calcDisplay" value="0" readonly>
+    <div class="calc-keys" id="calcKeys">
+      <button class="calc-key fn" data-act="clear">C</button>
+      <button class="calc-key fn" data-act="back">⌫</button>
+      <button class="calc-key fn" data-val="%">%</button>
+      <button class="calc-key op" data-val="/">÷</button>
+      <button class="calc-key" data-val="7">7</button>
+      <button class="calc-key" data-val="8">8</button>
+      <button class="calc-key" data-val="9">9</button>
+      <button class="calc-key op" data-val="*">×</button>
+      <button class="calc-key" data-val="4">4</button>
+      <button class="calc-key" data-val="5">5</button>
+      <button class="calc-key" data-val="6">6</button>
+      <button class="calc-key op" data-val="-">−</button>
+      <button class="calc-key" data-val="1">1</button>
+      <button class="calc-key" data-val="2">2</button>
+      <button class="calc-key" data-val="3">3</button>
+      <button class="calc-key op" data-val="+">+</button>
+      <button class="calc-key" data-val="0">0</button>
+      <button class="calc-key" data-val=".">.</button>
+      <button class="calc-key eq" data-act="equals" id="calcEq">=</button>
+    </div>
+  </div>
+
+  <!-- ===== About modal ===== -->
+  <div class="modal-overlay" id="aboutOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+      <button class="modal-close" id="aboutClose" title="Close">×</button>
+      <h2 id="aboutTitle">SQL Notepad <span class="accent-text">@Yosri</span></h2>
+      <p class="about-tag">A quick online workspace for SQL &amp; notes — no install needed.</p>
+      <div class="about-body">
+        <p>
+          This tool exists to make everyday editing fast and frictionless. Instead of
+          opening a heavy local desktop application for a quick query or a short note,
+          you open one page in your browser and start working in seconds.
+        </p>
+        <p>It's built for quick, lightweight tasks:</p>
+        <ul>
+          <li>Write and clean up SQL with syntax highlighting</li>
+          <li>Keep quick notes alongside your code in tabs</li>
+          <li>Switch between 15+ languages on the fly</li>
+          <li>Search, replace, and highlight matches instantly</li>
+          <li>A built-in calculator for quick math while you work</li>
+        </ul>
+        <p>Everything runs in your browser. Your open tabs are saved locally, so you can close the page and pick up where you left off.</p>
+      </div>
+      <div class="about-foot">
+        <span>© 2026 Mohamed Yosre Ismael</span>
+        <span class="about-email" id="aboutEmail">yosrii@gmail.com</span>
+      </div>
+    </div>
+  </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
@@ -1257,6 +1446,118 @@
   document.addEventListener('visibilitychange', function(){
     if(document.hidden) persistState();
   });
+
+  // ---------- About modal ----------
+  const aboutOverlay = document.getElementById('aboutOverlay');
+  document.getElementById('aboutBtn').addEventListener('click', function(){
+    aboutOverlay.hidden = false;
+  });
+  document.getElementById('aboutClose').addEventListener('click', function(){
+    aboutOverlay.hidden = true;
+  });
+  aboutOverlay.addEventListener('click', function(e){
+    if(e.target === aboutOverlay) aboutOverlay.hidden = true;
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !aboutOverlay.hidden) aboutOverlay.hidden = true;
+  });
+
+  // ---------- Calculator ----------
+  const calc = document.getElementById('calc');
+  const calcDisplay = document.getElementById('calcDisplay');
+  let calcExpr = '';          // the running expression as a string
+  let calcJustEvaluated = false;
+
+  function calcRender(){
+    calcDisplay.value = calcExpr === '' ? '0' : calcExpr;
+  }
+  function calcInput(val){
+    const isOperator = ('+-*/%').indexOf(val) !== -1;
+    if(calcJustEvaluated && !isOperator){
+      calcExpr = '';          // start fresh after a result when typing a number
+    }
+    calcJustEvaluated = false;
+    // avoid two operators in a row (replace the last one)
+    if(isOperator && /[+\-*/%]$/.test(calcExpr)){
+      calcExpr = calcExpr.slice(0, -1);
+    }
+    calcExpr += val;
+    calcRender();
+  }
+  function calcClear(){ calcExpr = ''; calcJustEvaluated = false; calcRender(); }
+  function calcBack(){ calcExpr = calcExpr.slice(0, -1); calcRender(); }
+  function calcEquals(){
+    if(!calcExpr) return;
+    // Only digits, operators, dot, parentheses and percent are allowed — safe to evaluate.
+    if(!/^[0-9+\-*/%.() ]+$/.test(calcExpr)){ calcDisplay.value = 'Error'; calcExpr=''; return; }
+    try{
+      // treat "%" as "/100"
+      const safe = calcExpr.replace(/%/g, '/100');
+      // eslint-disable-next-line no-new-func
+      const result = Function('"use strict";return (' + safe + ')')();
+      if(result === Infinity || result === -Infinity || Number.isNaN(result)){
+        calcDisplay.value = 'Error'; calcExpr = ''; return;
+      }
+      calcExpr = String(Math.round((result + Number.EPSILON) * 1e10) / 1e10);
+      calcJustEvaluated = true;
+      calcRender();
+    }catch(e){
+      calcDisplay.value = 'Error';
+      calcExpr = '';
+    }
+  }
+
+  document.getElementById('calcKeys').addEventListener('click', function(e){
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    const act = btn.getAttribute('data-act');
+    const val = btn.getAttribute('data-val');
+    if(act === 'clear') calcClear();
+    else if(act === 'back') calcBack();
+    else if(act === 'equals') calcEquals();
+    else if(val !== null) calcInput(val);
+  });
+
+  const calcToggleBtn = document.getElementById('calcToggle');
+  function setCalcVisible(show){
+    calc.hidden = !show;
+    try{ localStorage.setItem('sqlNotepadCalc', show ? '1' : '0'); }catch(e){}
+  }
+  calcToggleBtn.addEventListener('click', function(){ setCalcVisible(calc.hidden); });
+  document.getElementById('calcClose').addEventListener('click', function(){ setCalcVisible(false); });
+  let calcShown = false;
+  try{ calcShown = localStorage.getItem('sqlNotepadCalc') === '1'; }catch(e){}
+  if(calcShown) calc.hidden = false;
+  calcRender();
+
+  // Keyboard input while the calculator display area is focused isn't needed;
+  // make the whole calculator draggable by its header instead.
+  (function makeCalcDraggable(){
+    const head = document.getElementById('calcHead');
+    let dragging = false, offX = 0, offY = 0;
+    head.addEventListener('mousedown', function(e){
+      if(e.target.id === 'calcClose') return;
+      dragging = true;
+      const rect = calc.getBoundingClientRect();
+      offX = e.clientX - rect.left;
+      offY = e.clientY - rect.top;
+      calc.style.right = 'auto';
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function(e){
+      if(!dragging) return;
+      let x = e.clientX - offX;
+      let y = e.clientY - offY;
+      x = Math.max(0, Math.min(x, window.innerWidth - calc.offsetWidth));
+      y = Math.max(0, Math.min(y, window.innerHeight - 40));
+      calc.style.left = x + 'px';
+      calc.style.top = y + 'px';
+    });
+    document.addEventListener('mouseup', function(){
+      dragging = false;
+      document.body.style.userSelect = '';
+    });
+  })();
 
   // ---------- Init ----------
   const restored = loadPersistedState();
