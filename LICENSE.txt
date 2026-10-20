@@ -1,0 +1,33 @@
+SQL Notepad @Yosri
+Copyright (c) 2026 Hazem. All rights reserved.
+
+TERMS OF USE
+============
+
+1. OWNERSHIP
+   This software ("SQL Notepad @Yosri"), including its source code,
+   design, layout, and visual appearance, is the exclusive property
+   of the author (Hazem).
+
+2. PERMITTED USE
+   You may use this software, free of charge, for personal and
+   professional purposes directly in your browser.
+
+3. RESTRICTIONS
+   Without the prior written permission of the author, you may NOT:
+     - Copy, reproduce, or republish the source code, in whole or in part.
+     - Redistribute, sell, sublicense, or offer the software as your own.
+     - Remove, hide, or alter the copyright and authorship notices.
+     - Claim authorship or ownership of the software or its design.
+
+4. NO WARRANTY
+   The software is provided "as is", without warranty of any kind,
+   express or implied. The author is not liable for any damage or
+   data loss arising from its use.
+
+5. CONTACT
+   For licensing, commercial use, or any other permission requests,
+   please contact the author.
+
+This notice must be retained in all copies or substantial portions
+of the software.

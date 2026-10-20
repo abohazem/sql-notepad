@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  SQL Notepad @Yosri
+  Copyright (c) 2026 Hazem. All rights reserved.
+
+  This software and its design are the property of the author.
+  Unauthorized copying, redistribution, resale, or claiming of
+  authorship, in whole or in part, is prohibited.
+  Personal use is permitted. For any other use, contact the author.
+  ============================================================
+-->
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Hazem">
+<meta name="description" content="SQL Notepad @Yosri — a fast, clean, in-browser SQL editor and multi-language code/notes workspace.">
+<title>SQL Notepad @Yosri</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+
+<style>
+  :root{
+    --bg-deep:#15161e;
+    --bg-panel:#1c1d29;
+    --bg-elevated:#242535;
+    --border:#30314a;
+    --text:#c0caf5;
+    --text-dim:#6b7394;
+    --accent:#ff9e64;
+    --accent-2:#7dcfff;
+    --danger:#f7768e;
+    --good:#9ece6a;
+    --hover-bg:#2c2d40;
+    --danger-bg:#3a2030;
+    --activeline-bg:rgba(247,255,0,.22);
+    --activeline-border:#f7ff00;
+    --selected-bg:rgba(125,207,255,.18);
+    --match-bg:rgba(57,255,20,.35);
+    --match-border:#39ff14;
+    --syn-keyword:#bb9af7;
+    --syn-string:#9ece6a;
+    --syn-number:#ff9e64;
+    --syn-comment:#565a82;
+    --syn-operator:#89ddff;
+    --syn-variable2:#7dcfff;
+    --syn-variable:#9aa5ce;
+    --syn-builtin:#2ac3de;
+    --syn-atom:#ff9e64;
+    --syn-tag:#f7768e;
+    --syn-attribute:#ff9e64;
+    --syn-meta:#7dcfff;
+  }
+  /* ===== Light theme: base (beige) ===== */
+  body.light-mode{
+    --text:#3a3324;
+    --text-dim:#857a5e;
+    --accent:#a8591b;
+    --accent-2:#2f6f76;
+    --danger:#a8342b;
+    --good:#3f7d20;
+    --danger-bg:#f7e3df;
+    --activeline-bg:rgba(247,255,0,.40);
+    --activeline-border:#cdbb00;
+    --selected-bg:rgba(47,111,118,.16);
+    --match-bg:rgba(57,255,20,.35);
+    --match-border:#27c92b;
+    --syn-keyword:#8a3ab0;
+    --syn-string:#3f7d20;
+    --syn-number:#a8591b;
+    --syn-comment:#8a7f63;
+    --syn-operator:#2f6f76;
+    --syn-variable2:#2f6f76;
+    --syn-variable:#5c5230;
+    --syn-builtin:#5b6fae;
+    --syn-atom:#a8591b;
+    --syn-tag:#a8342b;
+    --syn-attribute:#a8591b;
+    --syn-meta:#2f6f76;
+  }
+  /* Light background variants. Surfaces stay tuned so text always has contrast. */
+  body.light-mode.bg-beige{
+    --bg-deep:#faf6ea;
+    --bg-panel:#fffdf6;
+    --bg-elevated:#f3ecd9;
+    --border:#e6d8b8;
+    --hover-bg:#efe4c4;
+  }
+  body.light-mode.bg-white{
+    --bg-deep:#f4f4f6;
+    --bg-panel:#ffffff;
+    --bg-elevated:#eceef2;
+    --border:#d7dae1;
+    --hover-bg:#e4e7ee;
+  }
+  body.light-mode.bg-gray{
+    --bg-deep:#dfe2e7;
+    --bg-panel:#eef0f3;
+    --bg-elevated:#d9dde3;
+    --border:#c2c7d0;
+    --hover-bg:#cfd4dc;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg-deep);
+    color:var(--text);
+    font-family:"Segoe UI","Tahoma",sans-serif;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+    transition:background .2s,color .2s;
+  }
+
+  /* ===== Toolbar ===== */
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 12px;
+    background:var(--bg-panel);
+    border-bottom:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  .toolbar .title{
+    font-weight:600;
+    color:var(--accent-2);
+    margin-right:12px;
+    font-size:14px;
+    white-space:nowrap;
+  }
+  .btn{
+    background:var(--bg-elevated);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:6px 12px;
+    font-size:13px;
+    cursor:pointer;
+    transition:background .15s,border-color .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{background:var(--hover-bg);border-color:var(--accent-2);}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn:focus-visible, select:focus-visible, input:focus-visible{
+    outline:2px solid var(--accent-2);
+    outline-offset:1px;
+  }
+  .btn.accent{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .dropdown{position:relative;display:inline-block;}
+  .dropdown-menu{
+    position:absolute;
+    top:110%;
+    left:0;
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:6px;
+    min-width:170px;
+    max-height:340px;
+    overflow-y:auto;
+    box-shadow:0 8px 20px rgba(0,0,0,.4);
+    display:none;
+    z-index:50;
+  }
+  .dropdown-menu.open{display:block;}
+  .dropdown-menu button{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    color:var(--text);
+    padding:8px 12px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .dropdown-menu button:hover{background:var(--hover-bg);color:var(--accent-2);}
+  .dropdown-menu button.current{color:var(--accent);font-weight:600;}
+  .menu-group-label{
+    padding:6px 12px 2px;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color:var(--text-dim);
+  }
+  .spacer{flex:1;}
+  .hint{font-size:11px;color:var(--text-dim);white-space:nowrap;}
+
+  /* ===== Tabs ===== */
+  .tabbar{
+    display:flex;
+    background:var(--bg-deep);
+    border-bottom:1px solid var(--border);
+    overflow-x:auto;
+    scrollbar-width:thin;
+  }
+  .tab{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 12px;
+    font-size:13px;
+    color:var(--text-dim);
+    border-right:1px solid var(--border);
+    cursor:pointer;
+    white-space:nowrap;
+    position:relative;
+    user-select:none;
+  }
+  .tab.active{
+    color:var(--text);
+    background:var(--bg-panel);
+  }
+  .tab.active::after{
+    content:"";
+    position:absolute;
+    bottom:0;left:0;right:0;
+    height:2px;
+    background:var(--accent);
+  }
+  .tab .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:none;}
+  .tab.dirty .dot{display:inline-block;}
+  .tab .close{
+    color:var(--text-dim);
+    font-size:14px;
+    line-height:1;
+    padding:2px;
+    border-radius:4px;
+  }
+  .tab .close:hover{color:var(--danger);background:var(--danger-bg);}
+  .tag{
+    font-size:10px;
+    padding:1px 6px;
+    border-radius:4px;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+  }
+
+  /* ===== Format bar (rich-text tabs only) ===== */
+  .formatbar{
+    display:none;
+    gap:6px;
+    padding:6px 12px;
+    background:var(--bg-panel);
+    border-bottom:1px solid var(--border);
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .formatbar.show{display:flex;}
+  .fmt-btn{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:6px;
+    padding:4px 10px;
+    font-size:12px;
+    cursor:pointer;
+    min-width:30px;
+  }
+  .fmt-btn:hover{background:var(--hover-bg);border-color:var(--accent-2);}
+  .fmt-sep{width:1px;height:18px;background:var(--border);margin:0 4px;}
+
+  /* ===== Editor area ===== */
+  .editor-wrap{
+    flex:1;
+    position:relative;
+    min-height:0;
+  }
+  #cmWrap, #noteWrap{height:100%;}
+  #noteWrap{overflow:auto;background:var(--bg-panel);}
+  #noteEditor{
+    min-height:100%;
+    padding:20px;
+    outline:none;
+    font-family:"Segoe UI","Tahoma",sans-serif;
+    font-size:15px;
+    line-height:1.8;
+    color:var(--text);
+    direction:ltr;
+    unicode-bidi:plaintext;
+  }
+  #noteEditor:empty::before{
+    content:"Type your note here...";
+    color:var(--text-dim);
+  }
+  #noteEditor ul, #noteEditor ol{padding-inline-start:24px;margin:8px 0;}
+  .CodeMirror{
+    height:100%;
+    font-family:"Cascadia Code","Consolas",monospace;
+    font-size:14px;
+    background:var(--bg-panel) !important;
+    color:var(--text) !important;
+    direction:ltr;
+  }
+  .CodeMirror-gutters{
+    background:var(--bg-panel) !important;
+    border-left:1px solid var(--border) !important;
+    border-right:none !important;
+  }
+  .CodeMirror-linenumber{color:var(--text-dim) !important;}
+  .CodeMirror-cursor{border-left:2px solid var(--accent-2) !important;}
+  .CodeMirror-activeline-background{
+    background:var(--activeline-bg) !important;
+    border-left:3px solid var(--activeline-border) !important;
+  }
+  .CodeMirror-selected{background:var(--selected-bg) !important;}
+  .cm-matchhighlight{
+    background:var(--match-bg) !important;
+    border:1px solid var(--match-border) !important;
+    border-radius:2px;
+    box-shadow:0 0 0 1px var(--match-border);
+  }
+  .cm-keyword{color:var(--syn-keyword) !important;font-weight:600;}
+  .cm-string{color:var(--syn-string) !important;}
+  .cm-string-2{color:var(--syn-string) !important;}
+  .cm-number{color:var(--syn-number) !important;}
+  .cm-comment{color:var(--syn-comment) !important;font-style:italic;}
+  .cm-operator{color:var(--syn-operator) !important;}
+  .cm-variable-2{color:var(--syn-variable2) !important;}
+  .cm-variable-3{color:var(--syn-variable2) !important;}
+  .cm-variable{color:var(--syn-variable) !important;}
+  .cm-property{color:var(--syn-variable) !important;}
+  .cm-def{color:var(--syn-variable) !important;}
+  .cm-builtin{color:var(--syn-builtin) !important;font-weight:600;}
+  .cm-atom{color:var(--syn-atom) !important;}
+  .cm-tag{color:var(--syn-tag) !important;}
+  .cm-attribute{color:var(--syn-attribute) !important;}
+  .cm-meta{color:var(--syn-meta) !important;}
+  .cm-qualifier{color:var(--syn-builtin) !important;}
+  .cm-header{color:var(--syn-keyword) !important;font-weight:700;}
+  .cm-link{color:var(--syn-operator) !important;text-decoration:underline;}
+
+  /* ===== Find/Replace panel ===== */
+  .findbar{
+    display:none;
+    position:absolute;
+    top:8px;
+    right:8px;
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px;
+    box-shadow:0 10px 28px rgba(0,0,0,.45);
+    z-index:60;
+    width:320px;
+  }
+  .findbar.open{display:block;}
+  .findbar-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+  .findbar input[type=text]{
+    flex:1;
+    background:var(--bg-deep);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text);
+    padding:6px 8px;
+    font-size:13px;
+  }
+  .findbar label{
+    font-size:11px;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap:3px;
+    white-space:nowrap;
+  }
+  .findbar .small-btn{
+    background:var(--bg-deep);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:6px;
+    padding:5px 8px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .findbar .small-btn:hover{border-color:var(--accent-2);}
+  .findbar .closebtn{
+    position:absolute;top:6px;right:8px;
+    background:none;border:none;color:var(--text-dim);
+    font-size:14px;cursor:pointer;
+  }
+  .findbar .msg{font-size:11px;color:var(--text-dim);min-height:14px;}
+
+  /* ===== Status bar ===== */
+  .statusbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:4px 12px;
+    background:var(--bg-panel);
+    border-top:1px solid var(--border);
+    font-size:11px;
+    color:var(--text-dim);
+  }
+  .statusbar .copyright{
+    flex:1;
+    text-align:center;
+    opacity:.75;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  input[type=file]{display:none;}
+</style>
+</head>
+<body class="bg-beige">
+
+  <div class="toolbar">
+    <span class="title">SQL Notepad @Yosri</span>
+
+    <div class="dropdown" id="newDropdown">
+      <button class="btn accent" id="newBtn">+ New ▾</button>
+      <div class="dropdown-menu" id="newMenu">
+        <button id="newSqlTab">New SQL File</button>
+        <button id="newNoteTab">New Note</button>
+      </div>
+    </div>
+
+    <div class="dropdown" id="formatDropdown">
+      <button class="btn" id="formatBtn">Format: SQL ▾</button>
+      <div class="dropdown-menu" id="formatMenu"></div>
+    </div>
+
+    <button class="btn" id="openBtn">Open File</button>
+    <button class="btn" id="saveBtn">Save</button>
+    <button class="btn" id="saveAsBtn">Save As</button>
+    <button class="btn" id="undoBtn" title="Undo">↶ Undo</button>
+    <button class="btn" id="redoBtn" title="Redo">↷ Redo</button>
+    <button class="btn" id="findBtn">Find &amp; Replace</button>
+    <button class="btn" id="themeToggle">☀️ Light</button>
+
+    <div class="dropdown" id="bgDropdown">
+      <button class="btn" id="bgBtn" title="Light background color">🎨 Background ▾</button>
+      <div class="dropdown-menu" id="bgMenu">
+        <button data-bg="bg-beige">Beige</button>
+        <button data-bg="bg-white">White</button>
+        <button data-bg="bg-gray">Light Gray</button>
+      </div>
+    </div>
+
+    <span class="spacer"></span>
+    <span class="hint" id="fsHint"></span>
+  </div>
+
+  <div class="tabbar" id="tabbar"></div>
+
+  <div class="formatbar" id="formatBar">
+    <button class="fmt-btn" id="fmtBold" title="Bold"><b>B</b></button>
+    <button class="fmt-btn" id="fmtItalic" title="Italic"><i>I</i></button>
+    <button class="fmt-btn" id="fmtUnderline" title="Underline"><u>U</u></button>
+    <span class="fmt-sep"></span>
+    <button class="fmt-btn" id="fmtUL" title="Bullet list">• List</button>
+    <button class="fmt-btn" id="fmtOL" title="Numbered list">1. List</button>
+    <span class="fmt-sep"></span>
+    <button class="fmt-btn" id="fmtClear" title="Clear formatting">Clear Formatting</button>
+  </div>
+
+  <div class="editor-wrap" id="editorWrap">
+    <div id="cmWrap"><textarea id="cmHost"></textarea></div>
+    <div id="noteWrap" style="display:none;">
+      <div id="noteEditor" contenteditable="true" spellcheck="false"></div>
+    </div>
+
+    <div class="findbar" id="findbar">
+      <button class="closebtn" id="closeFind">×</button>
+      <div class="findbar-row">
+        <input type="text" id="findInput" placeholder="Search text...">
+        <button class="small-btn" id="findPrev">‹ Prev</button>
+        <button class="small-btn" id="findNext">Next ›</button>
+      </div>
+      <div class="findbar-row">
+        <input type="text" id="replaceInput" placeholder="Replace with...">
+        <button class="small-btn" id="replaceOne">Replace</button>
+        <button class="small-btn" id="replaceAll">Replace All</button>
+      </div>
+      <div class="findbar-row">
+        <label><input type="checkbox" id="useRegex"> Regex</label>
+        <label><input type="checkbox" id="caseSensitive"> Match case</label>
+      </div>
+      <div class="msg" id="findMsg"></div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="posInfo">Line 1, Col 1</span>
+    <span class="copyright">© 2026 Hazem · SQL Notepad @Yosri</span>
+    <span id="modeInfo">SQL</span>
+  </div>
+
+  <input type="file" id="fileInput" accept=".sql,.txt,.md,.js,.py,.json,.html,.css,.xml,.yaml,.yml,.java,.c,.cpp,.cs,.php,.sh,text/plain">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/match-highlighter.min.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  const CM_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/';
+
+  // ---------- Tab type registry ----------
+  // kind: 'code' (CodeMirror) or 'richtext' (the notes editor).
+  // group: used to organize the Format dropdown.
+  // modeFile: CodeMirror mode script to lazy-load (null = already loaded / not needed).
+  const TAB_TYPES = {
+    note:       { label: 'Note',       kind: 'richtext', group: 'Text',     defaultExt: '.txt',  modeFile: null },
+    sql:        { label: 'SQL',        kind: 'code', group: 'Database',     mime: 'text/x-mysql', defaultExt: '.sql',  modeFile: null },
+    plsql:      { label: 'PL/SQL',     kind: 'code', group: 'Database',     mime: 'text/x-plsql', defaultExt: '.sql',  modeFile: 'mode/sql/sql.min.js' },
+    javascript: { label: 'JavaScript', kind: 'code', group: 'Web',         mime: 'text/javascript', defaultExt: '.js', modeFile: 'mode/javascript/javascript.min.js' },
+    typescript: { label: 'TypeScript', kind: 'code', group: 'Web',         mime: 'application/typescript', defaultExt: '.ts', modeFile: 'mode/javascript/javascript.min.js' },
+    html:       { label: 'HTML',       kind: 'code', group: 'Web',         mime: 'text/html', defaultExt: '.html', modeFile: 'mode/htmlmixed/htmlmixed.min.js', deps: ['mode/xml/xml.min.js','mode/javascript/javascript.min.js','mode/css/css.min.js'] },
+    css:        { label: 'CSS',        kind: 'code', group: 'Web',         mime: 'text/css', defaultExt: '.css', modeFile: 'mode/css/css.min.js' },
+    python:     { label: 'Python',     kind: 'code', group: 'Programming', mime: 'text/x-python', defaultExt: '.py', modeFile: 'mode/python/python.min.js' },
+    java:       { label: 'Java',       kind: 'code', group: 'Programming', mime: 'text/x-java', defaultExt: '.java', modeFile: 'mode/clike/clike.min.js' },
+    c:          { label: 'C',          kind: 'code', group: 'Programming', mime: 'text/x-csrc', defaultExt: '.c', modeFile: 'mode/clike/clike.min.js' },
+    cpp:        { label: 'C++',        kind: 'code', group: 'Programming', mime: 'text/x-c++src', defaultExt: '.cpp', modeFile: 'mode/clike/clike.min.js' },
+    csharp:     { label: 'C#',         kind: 'code', group: 'Programming', mime: 'text/x-csharp', defaultExt: '.cs', modeFile: 'mode/clike/clike.min.js' },
+    php:        { label: 'PHP',        kind: 'code', group: 'Programming', mime: 'application/x-httpd-php', defaultExt: '.php', modeFile: 'mode/php/php.min.js', deps: ['mode/xml/xml.min.js','mode/javascript/javascript.min.js','mode/css/css.min.js','mode/clike/clike.min.js'] },
+    json:       { label: 'JSON',       kind: 'code', group: 'Data',        mime: 'application/json', defaultExt: '.json', modeFile: 'mode/javascript/javascript.min.js' },
+    xml:        { label: 'XML',        kind: 'code', group: 'Data',        mime: 'application/xml', defaultExt: '.xml', modeFile: 'mode/xml/xml.min.js' },
+    yaml:       { label: 'YAML',       kind: 'code', group: 'Data',        mime: 'text/x-yaml', defaultExt: '.yaml', modeFile: 'mode/yaml/yaml.min.js' },
+    markdown:   { label: 'Markdown',   kind: 'code', group: 'Data',        mime: 'text/x-markdown', defaultExt: '.md', modeFile: 'mode/markdown/markdown.min.js' },
+    shell:      { label: 'Shell / Bash', kind: 'code', group: 'System',    mime: 'text/x-sh', defaultExt: '.sh', modeFile: 'mode/shell/shell.min.js' }
+  };
+
+  // Map file extensions -> tab type, for Open File.
+  const EXT_TO_TYPE = {
+    '.sql':'sql', '.js':'javascript', '.ts':'typescript', '.py':'python',
+    '.json':'json', '.html':'html', '.htm':'html', '.css':'css', '.xml':'xml',
+    '.yaml':'yaml', '.yml':'yaml', '.md':'markdown', '.markdown':'markdown',
+    '.java':'java', '.c':'c', '.h':'c', '.cpp':'cpp', '.cc':'cpp', '.cs':'csharp',
+    '.php':'php', '.sh':'shell', '.bash':'shell', '.txt':'note'
+  };
+
+  // ---------- Lazy mode loader ----------
+  const loadedScripts = {};
+  function loadScriptOnce(relPath){
+    if(!relPath) return Promise.resolve();
+    if(loadedScripts[relPath]) return loadedScripts[relPath];
+    loadedScripts[relPath] = new Promise(function(resolve, reject){
+      const s = document.createElement('script');
+      s.src = CM_BASE + relPath;
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error('Failed to load ' + relPath)); };
+      document.head.appendChild(s);
+    });
+    return loadedScripts[relPath];
+  }
+  async function ensureModeLoaded(type){
+    const def = TAB_TYPES[type];
+    if(!def || def.kind !== 'code') return;
+    if(def.deps){
+      for(const dep of def.deps){ await loadScriptOnce(dep); }
+    }
+    if(def.modeFile) await loadScriptOnce(def.modeFile);
+  }
+  // sql.min.js is already loaded in the page, so mark its path as resolved.
+  loadedScripts['mode/sql/sql.min.js'] = Promise.resolve();
+
+  const supportsFS = 'showOpenFilePicker' in window;
+  document.getElementById('fsHint').textContent = supportsFS
+    ? ''
+    : "Note: your browser doesn't support direct file saving, a regular download will be used instead.";
+
+  // ---------- Theme toggle (dark / light) ----------
+  const themeToggleBtn = document.getElementById('themeToggle');
+  const bgDropdown = document.getElementById('bgDropdown');
+  function applyTheme(mode){
+    document.body.classList.toggle('light-mode', mode === 'light');
+    themeToggleBtn.textContent = mode === 'light' ? '🌙 Dark' : '☀️ Light';
+    // Background-color picker only matters in light mode.
+    bgDropdown.style.display = (mode === 'light') ? '' : 'none';
+    try{ localStorage.setItem('sqlNotepadTheme', mode); }catch(e){}
+  }
+  themeToggleBtn.addEventListener('click', function(){
+    const current = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    applyTheme(current === 'light' ? 'dark' : 'light');
+  });
+  let savedTheme = 'dark';
+  try{ savedTheme = localStorage.getItem('sqlNotepadTheme') || 'dark'; }catch(e){}
+  applyTheme(savedTheme);
+
+  // ---------- Light background color picker ----------
+  const BG_CLASSES = ['bg-beige', 'bg-white', 'bg-gray'];
+  const bgBtn = document.getElementById('bgBtn');
+  const bgMenu = document.getElementById('bgMenu');
+  function applyBg(bgClass){
+    if(BG_CLASSES.indexOf(bgClass) === -1) bgClass = 'bg-beige';
+    BG_CLASSES.forEach(function(c){ document.body.classList.remove(c); });
+    document.body.classList.add(bgClass);
+    try{ localStorage.setItem('sqlNotepadBg', bgClass); }catch(e){}
+  }
+  let savedBg = 'bg-beige';
+  try{ savedBg = localStorage.getItem('sqlNotepadBg') || 'bg-beige'; }catch(e){}
+  applyBg(savedBg);
+  bgBtn.addEventListener('click', function(){ bgMenu.classList.toggle('open'); });
+  bgMenu.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){
+      applyBg(b.getAttribute('data-bg'));
+      bgMenu.classList.remove('open');
+    });
+  });
+  document.addEventListener('click', function(e){
+    if(!bgDropdown.contains(e.target)) bgMenu.classList.remove('open');
+  });
+
+  // ---------- Editors ----------
+  const cmWrap = document.getElementById('cmWrap');
+  const noteWrap = document.getElementById('noteWrap');
+  const noteEditor = document.getElementById('noteEditor');
+  const formatBar = document.getElementById('formatBar');
+  const formatBtn = document.getElementById('formatBtn');
+  const formatMenu = document.getElementById('formatMenu');
+  const findbar = document.getElementById('findbar');
+
+  const editor = CodeMirror.fromTextArea(document.getElementById('cmHost'), {
+    lineNumbers: true,
+    matchBrackets: true,
+    styleActiveLine: true,
+    highlightSelectionMatches: { showToken: true, minChars: 2, delay: 100, style: 'matchhighlight', caseInsensitive: true },
+    tabSize: 4,
+    indentUnit: 4,
+    mode: TAB_TYPES.sql.mime,
+    theme: 'default',
+    historyEventDelay: 30
+  });
+
+  let tabs = [];
+  let activeId = null;
+  let counterSql = 1;
+  let counterNote = 1;
+
+  function uid(){ return 't' + Math.random().toString(36).slice(2,9); }
+
+  // ---------- Format dropdown ----------
+  (function populateFormatMenu(){
+    formatMenu.innerHTML = '';
+    const groups = {};
+    Object.keys(TAB_TYPES).forEach(function(key){
+      const g = TAB_TYPES[key].group || 'Other';
+      (groups[g] = groups[g] || []).push(key);
+    });
+    const order = ['Text', 'Database', 'Web', 'Programming', 'Data', 'System'];
+    order.forEach(function(groupName){
+      if(!groups[groupName]) return;
+      const label = document.createElement('div');
+      label.className = 'menu-group-label';
+      label.textContent = groupName;
+      formatMenu.appendChild(label);
+      groups[groupName].forEach(function(key){
+        const item = document.createElement('button');
+        item.textContent = TAB_TYPES[key].label;
+        item.dataset.type = key;
+        item.addEventListener('click', async function(){
+          const tab = getActiveTab();
+          await convertTabType(tab, key);
+          formatMenu.classList.remove('open');
+        });
+        formatMenu.appendChild(item);
+      });
+    });
+  })();
+
+  function markCurrentInMenu(type){
+    formatMenu.querySelectorAll('button').forEach(function(b){
+      b.classList.toggle('current', b.dataset.type === type);
+    });
+  }
+
+  formatBtn.addEventListener('click', function(){ formatMenu.classList.toggle('open'); });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('formatDropdown').contains(e.target)){
+      formatMenu.classList.remove('open');
+    }
+  });
+
+  // ---------- HTML <-> plain text helpers (rich-text tabs) ----------
+  function escapeHtml(str){
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function textToHtml(text){
+    return escapeHtml(text || '').replace(/\r\n|\r|\n/g, '<br>');
+  }
+  function htmlToPlainText(html){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    tmp.querySelectorAll('br').forEach(function(br){ br.replaceWith('\n'); });
+    tmp.querySelectorAll('div,p,li').forEach(function(el){ el.insertAdjacentText('beforeend', '\n'); });
+    return tmp.textContent.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+  }
+
+  // ---------- Tabs model ----------
+  function attachDocChangeTracking(tab){
+    CodeMirror.on(tab.doc, 'change', function(){
+      if(!tab.dirty){ tab.dirty = true; renderTabs(); }
+      persistStateDebounced();
+    });
+  }
+
+  function createTab(type, name, content){
+    const def = TAB_TYPES[type] || TAB_TYPES.note;
+    const realType = TAB_TYPES[type] ? type : 'note';
+    const tab = {
+      id: uid(),
+      type: realType,
+      name: name,
+      doc: null,
+      content: '',
+      fileHandle: null,
+      dirty: false
+    };
+    if(def.kind === 'code'){
+      // Created with a basic doc; correct mode is applied once its script loads.
+      tab.doc = new CodeMirror.Doc(content || '', def.mime);
+      attachDocChangeTracking(tab);
+      ensureModeLoaded(realType).then(function(){
+        // Re-assert mode on the editor so highlighting kicks in after the script loads.
+        if(tab.id === activeId){
+          editor.setOption('mode', def.mime);
+        }
+      }).catch(function(err){ console.error(err); });
+    } else {
+      tab.content = content || '';
+    }
+    tabs.push(tab);
+    return tab;
+  }
+
+  function renderTabs(){
+    const bar = document.getElementById('tabbar');
+    bar.innerHTML = '';
+    tabs.forEach(function(tab){
+      const def = TAB_TYPES[tab.type];
+      const el = document.createElement('div');
+      el.className = 'tab' + (tab.id === activeId ? ' active' : '') + (tab.dirty ? ' dirty' : '');
+      el.innerHTML =
+        '<span class="dot"></span>' +
+        '<span class="tag">' + def.label + '</span>' +
+        '<span class="name"></span>' +
+        '<span class="close">×</span>';
+      el.querySelector('.name').textContent = tab.name;
+      el.addEventListener('click', function(e){
+        if(e.target.classList.contains('close')){
+          closeTab(tab.id);
+        } else {
+          switchTab(tab.id);
+        }
+      });
+      bar.appendChild(el);
+    });
+  }
+
+  function getActiveTab(){
+    return tabs.find(function(t){ return t.id === activeId; });
+  }
+
+  async function activateTabSurface(tab){
+    const def = TAB_TYPES[tab.type];
+    if(def.kind === 'code'){
+      noteWrap.style.display = 'none';
+      cmWrap.style.display = '';
+      formatBar.classList.remove('show');
+      editor.swapDoc(tab.doc);
+      await ensureModeLoaded(tab.type);
+      editor.setOption('mode', def.mime);
+      editor.refresh();
+      editor.focus();
+    } else {
+      cmWrap.style.display = 'none';
+      noteWrap.style.display = '';
+      formatBar.classList.add('show');
+      noteEditor.innerHTML = tab.content || '';
+      noteEditor.focus();
+      findbar.classList.remove('open');
+    }
+    formatBtn.textContent = 'Format: ' + def.label + ' ▾';
+    document.getElementById('modeInfo').textContent = def.label;
+    markCurrentInMenu(tab.type);
+    renderTabs();
+    updatePos();
+  }
+
+  function switchTab(id){
+    const tab = tabs.find(function(t){ return t.id === id; });
+    if(!tab) return;
+
+    const outgoing = getActiveTab();
+    if(outgoing && outgoing.id !== tab.id && TAB_TYPES[outgoing.type].kind === 'richtext'){
+      outgoing.content = noteEditor.innerHTML;
+    }
+
+    activeId = id;
+    activateTabSurface(tab);
+    persistStateDebounced();
+  }
+
+  // ---------- Switch an existing tab's type/language on the fly ----------
+  function applyExtensionForType(tab, newDef){
+    if(!newDef.defaultExt) return;
+    const dotIdx = tab.name.lastIndexOf('.');
+    const base = dotIdx > 0 ? tab.name.slice(0, dotIdx) : tab.name;
+    tab.name = base + newDef.defaultExt;
+  }
+
+  async function convertTabType(tab, newType){
+    if(!tab || !TAB_TYPES[newType] || tab.type === newType) return;
+    const oldDef = TAB_TYPES[tab.type];
+    const newDef = TAB_TYPES[newType];
+
+    let plainText;
+    if(oldDef.kind === 'code'){
+      plainText = tab.doc.getValue();
+    } else {
+      const liveHtml = (tab.id === activeId) ? noteEditor.innerHTML : (tab.content || '');
+      plainText = htmlToPlainText(liveHtml);
+    }
+
+    if(newDef.kind === 'code'){
+      await ensureModeLoaded(newType);
+      tab.doc = new CodeMirror.Doc(plainText, newDef.mime);
+      attachDocChangeTracking(tab);
+      tab.content = '';
+    } else {
+      tab.content = textToHtml(plainText);
+      tab.doc = null;
+    }
+
+    applyExtensionForType(tab, newDef);
+    tab.type = newType;
+    tab.dirty = true;
+
+    if(tab.id === activeId){
+      activateTabSurface(tab);
+    } else {
+      renderTabs();
+    }
+    persistState();
+  }
+
+  function closeTab(id){
+    const idx = tabs.findIndex(function(t){ return t.id === id; });
+    if(idx === -1) return;
+    const tab = tabs[idx];
+    if(tab.dirty){
+      const ok = window.confirm('There are unsaved changes in "' + tab.name + '".\nClose this tab anyway?');
+      if(!ok) return;
+    }
+    tabs.splice(idx, 1);
+    if(tabs.length === 0){
+      const fresh = createTab('note', 'Note-' + (counterNote++) + '.txt', '');
+      switchTab(fresh.id);
+      persistState();
+      return;
+    }
+    if(activeId === id){
+      const next = tabs[idx] || tabs[idx - 1] || tabs[0];
+      switchTab(next.id);
+    } else {
+      renderTabs();
+    }
+    persistState();
+  }
+
+  // ---------- New tab buttons ----------
+  document.getElementById('newBtn').addEventListener('click', function(){
+    document.getElementById('newMenu').classList.toggle('open');
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('newDropdown').contains(e.target)){
+      document.getElementById('newMenu').classList.remove('open');
+    }
+  });
+  document.getElementById('newSqlTab').addEventListener('click', function(){
+    const tab = createTab('sql', 'Query-' + (counterSql++) + '.sql', '-- Write your SQL query here\n');
+    switchTab(tab.id);
+    persistState();
+    document.getElementById('newMenu').classList.remove('open');
+  });
+  document.getElementById('newNoteTab').addEventListener('click', function(){
+    const tab = createTab('note', 'Note-' + (counterNote++) + '.txt', '');
+    switchTab(tab.id);
+    persistState();
+    document.getElementById('newMenu').classList.remove('open');
+  });
+
+  // ---------- Open ----------
+  function typeFromFilename(name){
+    const lower = name.toLowerCase();
+    const dot = lower.lastIndexOf('.');
+    const ext = dot >= 0 ? lower.slice(dot) : '';
+    return EXT_TO_TYPE[ext] || 'note';
+  }
+
+  document.getElementById('openBtn').addEventListener('click', async function(){
+    if(supportsFS){
+      try{
+        const [handle] = await window.showOpenFilePicker();
+        const file = await handle.getFile();
+        const text = await file.text();
+        const type = typeFromFilename(file.name);
+        const isCode = TAB_TYPES[type].kind === 'code';
+        const tab = createTab(type, file.name, isCode ? text : textToHtml(text));
+        tab.fileHandle = handle;
+        switchTab(tab.id);
+        persistState();
+      }catch(err){
+        if(err.name !== 'AbortError') console.error(err);
+      }
+    } else {
+      document.getElementById('fileInput').click();
+    }
+  });
+
+  document.getElementById('fileInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      const type = typeFromFilename(file.name);
+      const isCode = TAB_TYPES[type].kind === 'code';
+      const tab = createTab(type, file.name, isCode ? reader.result : textToHtml(reader.result));
+      switchTab(tab.id);
+      persistState();
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // ---------- Save ----------
+  async function writeToHandle(handle, content){
+    const writable = await handle.createWritable();
+    await writable.write(content);
+    await writable.close();
+  }
+
+  function downloadFallback(name, content){
+    const blob = new Blob([content], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function saveTab(forceAs){
+    const tab = getActiveTab();
+    if(!tab) return;
+
+    let content;
+    if(TAB_TYPES[tab.type].kind === 'code'){
+      content = tab.doc.getValue();
+    } else {
+      tab.content = noteEditor.innerHTML;
+      content = htmlToPlainText(tab.content);
+    }
+
+    if(supportsFS && (!forceAs) && tab.fileHandle){
+      await writeToHandle(tab.fileHandle, content);
+      tab.dirty = false;
+      renderTabs();
+      persistState();
+      flashFindMsg('Saved');
+      return;
+    }
+
+    if(supportsFS){
+      try{
+        const handle = await window.showSaveFilePicker({ suggestedName: tab.name });
+        await writeToHandle(handle, content);
+        tab.fileHandle = handle;
+        tab.name = handle.name;
+        tab.dirty = false;
+        renderTabs();
+        persistState();
+      }catch(err){
+        if(err.name !== 'AbortError') console.error(err);
+      }
+      return;
+    }
+
+    downloadFallback(tab.name, content);
+    tab.dirty = false;
+    renderTabs();
+    persistState();
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', function(){ saveTab(false); });
+  document.getElementById('saveAsBtn').addEventListener('click', function(){ saveTab(true); });
+
+  // ---------- Undo / Redo ----------
+  document.getElementById('undoBtn').addEventListener('click', function(){
+    const tab = getActiveTab();
+    if(!tab) return;
+    if(TAB_TYPES[tab.type].kind === 'code'){
+      editor.undo(); editor.focus();
+    } else {
+      noteEditor.focus(); document.execCommand('undo');
+    }
+  });
+  document.getElementById('redoBtn').addEventListener('click', function(){
+    const tab = getActiveTab();
+    if(!tab) return;
+    if(TAB_TYPES[tab.type].kind === 'code'){
+      editor.redo(); editor.focus();
+    } else {
+      noteEditor.focus(); document.execCommand('redo');
+    }
+  });
+
+  // ---------- Simple note formatting ----------
+  function formatNote(cmd, value){
+    const tab = getActiveTab();
+    if(!tab || TAB_TYPES[tab.type].kind !== 'richtext') return;
+    noteEditor.focus();
+    document.execCommand(cmd, false, value || null);
+    if(!tab.dirty){ tab.dirty = true; renderTabs(); }
+    persistStateDebounced();
+  }
+  document.getElementById('fmtBold').addEventListener('click', function(){ formatNote('bold'); });
+  document.getElementById('fmtItalic').addEventListener('click', function(){ formatNote('italic'); });
+  document.getElementById('fmtUnderline').addEventListener('click', function(){ formatNote('underline'); });
+  document.getElementById('fmtUL').addEventListener('click', function(){ formatNote('insertUnorderedList'); });
+  document.getElementById('fmtOL').addEventListener('click', function(){ formatNote('insertOrderedList'); });
+  document.getElementById('fmtClear').addEventListener('click', function(){ formatNote('removeFormat'); });
+
+  noteEditor.addEventListener('input', function(){
+    const tab = getActiveTab();
+    if(tab && TAB_TYPES[tab.type].kind === 'richtext'){
+      if(!tab.dirty){ tab.dirty = true; renderTabs(); }
+      persistStateDebounced();
+    }
+  });
+
+  // ---------- Find / Replace (code tabs only) ----------
+  document.getElementById('findBtn').addEventListener('click', function(){
+    const tab = getActiveTab();
+    if(tab && TAB_TYPES[tab.type].kind !== 'code'){
+      alert('Find & Replace is currently only available for code tabs.');
+      return;
+    }
+    findbar.classList.toggle('open');
+    if(findbar.classList.contains('open')) document.getElementById('findInput').focus();
+  });
+  document.getElementById('closeFind').addEventListener('click', function(){
+    findbar.classList.remove('open');
+    editor.focus();
+  });
+
+  function flashFindMsg(msg){
+    const el = document.getElementById('findMsg');
+    el.textContent = msg;
+    setTimeout(function(){ if(el.textContent === msg) el.textContent = ''; }, 2000);
+  }
+
+  function buildQuery(){
+    const text = document.getElementById('findInput').value;
+    const useRegex = document.getElementById('useRegex').checked;
+    const caseSensitive = document.getElementById('caseSensitive').checked;
+    if(!text) return null;
+    if(useRegex){
+      try{ return new RegExp(text, caseSensitive ? 'g' : 'gi'); }
+      catch(e){ flashFindMsg('Invalid Regex pattern'); return null; }
+    }
+    return { text: text, caseSensitive: caseSensitive };
+  }
+
+  function doFind(reverse){
+    const q = buildQuery();
+    if(!q) return;
+    const cursorPos = editor.getCursor(reverse ? 'from' : 'to');
+    const searchSpec = (q instanceof RegExp) ? q : q.text;
+    const caseFold = (q instanceof RegExp) ? false : !q.caseSensitive;
+    const cur = editor.getSearchCursor(searchSpec, cursorPos, { caseFold: caseFold });
+    let found = reverse ? cur.findPrevious() : cur.findNext();
+    if(!found){
+      const wrapPos = reverse
+        ? { line: editor.lastLine(), ch: editor.getLine(editor.lastLine()).length }
+        : { line: 0, ch: 0 };
+      const wrapCur = editor.getSearchCursor(searchSpec, wrapPos, { caseFold: caseFold });
+      found = reverse ? wrapCur.findPrevious() : wrapCur.findNext();
+      if(found){
+        editor.setSelection(wrapCur.from(), wrapCur.to());
+        editor.scrollIntoView({ from: wrapCur.from(), to: wrapCur.to() }, 60);
+        flashFindMsg('Wrapped around');
+        return;
+      }
+      flashFindMsg('No matches found');
+      return;
+    }
+    editor.setSelection(cur.from(), cur.to());
+    editor.scrollIntoView({ from: cur.from(), to: cur.to() }, 60);
+  }
+
+  document.getElementById('findNext').addEventListener('click', function(){ doFind(false); });
+  document.getElementById('findPrev').addEventListener('click', function(){ doFind(true); });
+  document.getElementById('findInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') doFind(e.shiftKey);
+  });
+
+  function doReplaceOne(){
+    const q = buildQuery();
+    if(!q) return;
+    const replaceText = document.getElementById('replaceInput').value;
+    const sel = editor.getSelection();
+    const selFrom = editor.getCursor('from');
+    const selTo = editor.getCursor('to');
+
+    let matches = false;
+    if(q instanceof RegExp){
+      const single = new RegExp(q.source, q.flags.replace('g',''));
+      matches = single.test(sel);
+    } else {
+      matches = q.caseSensitive ? sel === q.text : sel.toLowerCase() === q.text.toLowerCase();
+    }
+
+    if(sel && matches){
+      let finalText = replaceText;
+      if(q instanceof RegExp){
+        const single = new RegExp(q.source, q.flags.replace('g',''));
+        finalText = sel.replace(single, replaceText);
+      }
+      editor.replaceRange(finalText, selFrom, selTo);
+      editor.setCursor(selFrom.line, selFrom.ch + finalText.length);
+    }
+    doFind(false);
+  }
+
+  function doReplaceAll(){
+    const q = buildQuery();
+    if(!q) return;
+    const replaceText = document.getElementById('replaceInput').value;
+    const caseFold = (q instanceof RegExp) ? false : !q.caseSensitive;
+    const searchSpec = (q instanceof RegExp) ? q : q.text;
+    let count = 0;
+    editor.operation(function(){
+      const cur = editor.getSearchCursor(searchSpec, { line: 0, ch: 0 }, { caseFold: caseFold });
+      while(cur.findNext()){
+        const matchedText = editor.getRange(cur.from(), cur.to());
+        let finalText = replaceText;
+        if(q instanceof RegExp){
+          const single = new RegExp(q.source, q.flags.replace('g',''));
+          finalText = matchedText.replace(single, replaceText);
+        }
+        cur.replace(finalText);
+        count++;
+      }
+    });
+    flashFindMsg('Replaced ' + count + ' occurrence(s)');
+  }
+
+  document.getElementById('replaceOne').addEventListener('click', doReplaceOne);
+  document.getElementById('replaceAll').addEventListener('click', doReplaceAll);
+
+  // ---------- Status bar ----------
+  function updatePos(){
+    const tab = getActiveTab();
+    if(!tab || TAB_TYPES[tab.type].kind !== 'code'){
+      document.getElementById('posInfo').textContent = '';
+      return;
+    }
+    const c = editor.getCursor();
+    document.getElementById('posInfo').textContent = 'Line ' + (c.line + 1) + ', Col ' + (c.ch + 1);
+  }
+  editor.on('cursorActivity', updatePos);
+
+  // ---------- Keyboard shortcuts ----------
+  editor.setOption('extraKeys', {
+    'Ctrl-S': function(){ saveTab(false); return false; },
+    'Cmd-S': function(){ saveTab(false); return false; },
+    'Ctrl-F': function(){ findbar.classList.add('open'); document.getElementById('findInput').focus(); return false; },
+    'Cmd-F': function(){ findbar.classList.add('open'); document.getElementById('findInput').focus(); return false; }
+  });
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's'){
+      e.preventDefault();
+      saveTab(false);
+    }
+  });
+
+  // ---------- Persistence ----------
+  let persistTimer = null;
+  function persistStateDebounced(){
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(persistState, 500);
+  }
+
+  function serializeTabs(){
+    const active = getActiveTab();
+    if(active && TAB_TYPES[active.type].kind === 'richtext'){
+      active.content = noteEditor.innerHTML;
+    }
+    return tabs.map(function(t){
+      return {
+        id: t.id,
+        type: t.type,
+        name: t.name,
+        dirty: t.dirty,
+        content: TAB_TYPES[t.type].kind === 'code' ? t.doc.getValue() : (t.content || '')
+      };
+    });
+  }
+
+  function persistState(){
+    try{
+      const state = {
+        version: 2,
+        activeId: activeId,
+        counterSql: counterSql,
+        counterNote: counterNote,
+        tabs: serializeTabs()
+      };
+      localStorage.setItem('sqlNotepadState', JSON.stringify(state));
+    }catch(e){}
+  }
+
+  function loadPersistedState(){
+    let raw = null;
+    try{ raw = localStorage.getItem('sqlNotepadState'); }catch(e){}
+    if(!raw) return false;
+    let state;
+    try{ state = JSON.parse(raw); }catch(e){ return false; }
+    if(!state || !Array.isArray(state.tabs) || state.tabs.length === 0) return false;
+
+    state.tabs.forEach(function(t){
+      const tab = createTab(TAB_TYPES[t.type] ? t.type : 'note', t.name, t.content);
+      tab.id = t.id;
+      tab.dirty = !!t.dirty;
+    });
+    if(state.counterSql) counterSql = state.counterSql;
+    if(state.counterNote) counterNote = state.counterNote;
+
+    const activeExists = tabs.some(function(t){ return t.id === state.activeId; });
+    switchTab(activeExists ? state.activeId : tabs[0].id);
+    renderTabs();
+    return true;
+  }
+
+  window.addEventListener('beforeunload', function(e){
+    persistState();
+    if(tabs.some(function(t){ return t.dirty; })){
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) persistState();
+  });
+
+  // ---------- Init ----------
+  const restored = loadPersistedState();
+  if(!restored){
+    const first = createTab(
+      'sql',
+      'Query-' + (counterSql++) + '.sql',
+      "-- Welcome! Write your SQL query here\nSELECT *\nFROM employees\nWHERE department = 'Sales';\n"
+    );
+    switchTab(first.id);
+  }
+})();
+</script>
+</body>
+</html>
