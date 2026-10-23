@@ -285,7 +285,10 @@
     color:var(--text);
     direction:ltr;
     unicode-bidi:plaintext;
+    text-align:start;
   }
+  #noteEditor[dir="rtl"]{direction:rtl;}
+  #noteEditor[dir="ltr"]{direction:ltr;}
   #noteEditor:empty::before{
     content:"Type your note here...";
     color:var(--text-dim);
@@ -589,6 +592,13 @@
     <span class="fmt-sep"></span>
     <button class="fmt-btn" id="fmtUL" title="Bullet list">• List</button>
     <button class="fmt-btn" id="fmtOL" title="Numbered list">1. List</button>
+    <span class="fmt-sep"></span>
+    <button class="fmt-btn" id="fmtAlignRight" title="Align right">⇥</button>
+    <button class="fmt-btn" id="fmtAlignCenter" title="Align center">≡</button>
+    <button class="fmt-btn" id="fmtAlignLeft" title="Align left">⇤</button>
+    <span class="fmt-sep"></span>
+    <button class="fmt-btn" id="fmtRTL" title="Right-to-left (Arabic)">RTL ←</button>
+    <button class="fmt-btn" id="fmtLTR" title="Left-to-right (English)">LTR →</button>
     <span class="fmt-sep"></span>
     <button class="fmt-btn" id="fmtClear" title="Clear formatting">Clear Formatting</button>
   </div>
@@ -971,6 +981,8 @@
       noteWrap.style.display = '';
       formatBar.classList.add('show');
       noteEditor.innerHTML = tab.content || '';
+      if(tab.dir){ noteEditor.setAttribute('dir', tab.dir); }
+      else { noteEditor.removeAttribute('dir'); }
       noteEditor.focus();
       findbar.classList.remove('open');
     }
@@ -1224,7 +1236,23 @@
   document.getElementById('fmtUnderline').addEventListener('click', function(){ formatNote('underline'); });
   document.getElementById('fmtUL').addEventListener('click', function(){ formatNote('insertUnorderedList'); });
   document.getElementById('fmtOL').addEventListener('click', function(){ formatNote('insertOrderedList'); });
+  document.getElementById('fmtAlignRight').addEventListener('click', function(){ formatNote('justifyRight'); });
+  document.getElementById('fmtAlignCenter').addEventListener('click', function(){ formatNote('justifyCenter'); });
+  document.getElementById('fmtAlignLeft').addEventListener('click', function(){ formatNote('justifyLeft'); });
   document.getElementById('fmtClear').addEventListener('click', function(){ formatNote('removeFormat'); });
+
+  // Direction (whole note) — set the editor's dir and remember it per tab.
+  function setNoteDir(dir){
+    const tab = getActiveTab();
+    if(!tab || TAB_TYPES[tab.type].kind !== 'richtext') return;
+    tab.dir = dir;
+    noteEditor.setAttribute('dir', dir);
+    noteEditor.focus();
+    if(!tab.dirty){ tab.dirty = true; renderTabs(); }
+    persistState();
+  }
+  document.getElementById('fmtRTL').addEventListener('click', function(){ setNoteDir('rtl'); });
+  document.getElementById('fmtLTR').addEventListener('click', function(){ setNoteDir('ltr'); });
 
   noteEditor.addEventListener('input', function(){
     const tab = getActiveTab();
@@ -1398,6 +1426,7 @@
         type: t.type,
         name: t.name,
         dirty: t.dirty,
+        dir: t.dir || null,
         content: TAB_TYPES[t.type].kind === 'code' ? t.doc.getValue() : (t.content || '')
       };
     });
@@ -1428,6 +1457,7 @@
       const tab = createTab(TAB_TYPES[t.type] ? t.type : 'note', t.name, t.content);
       tab.id = t.id;
       tab.dirty = !!t.dirty;
+      if(t.dir) tab.dir = t.dir;
     });
     if(state.counterSql) counterSql = state.counterSql;
     if(state.counterNote) counterNote = state.counterNote;
